@@ -9,7 +9,11 @@
 import UIKit
 import WebKit
 
-class ViewController: UIViewController, WKNavigationDelegate {
+class ViewController: UIViewController, WKNavigationDelegate, OpenWebsite {
+    
+    func openWebsite(_ sender: UITableViewCell) {
+        openPage(sender: sender)
+    }
     
     var webView: WKWebView!
     var progressView: UIProgressView!
@@ -39,33 +43,16 @@ class ViewController: UIViewController, WKNavigationDelegate {
         navigationController?.isToolbarHidden = false
         
         webView.addObserver(self, forKeyPath: #keyPath(WKWebView.estimatedProgress), options: .new, context: nil)
-        
-        let url = URL(string: "https://" + websites[0])!
-        webView.load(URLRequest(url: url))
         webView.allowsBackForwardNavigationGestures = true
     }
 
     @objc func openTapped() {
-        let ac = UIAlertController(title: "Open page", message: nil, preferredStyle: .actionSheet)
-        for website in websites {
-            ac.addAction(UIAlertAction(title: website, style: .default, handler: openPage(action:)))
-        }
-        ac.addAction(UIAlertAction(title: "Cancel", style: .cancel, handler: nil))
-        ac.popoverPresentationController?.barButtonItem = navigationItem.rightBarButtonItem
-        present(ac, animated: true)
+        self.performSegue(withIdentifier: "OpenWebsiteList", sender: self)
     }
     
-    func openPage(action: UIAlertAction) {
-        guard let actionTitle = action.title else { return }
+    func openPage(sender: UITableViewCell) {
+        guard let actionTitle = sender.textLabel?.text else { return }
         guard let url = URL(string: "https://" + actionTitle) else { return }
-//        for website in websites {
-//            if url.host?.contains(website) {
-//                let ac = UIAlertController (title: "Not accessible", message: "The website you specified is not allowed", preferredStyle: .alert)
-//                ac.addAction(UIAlertAction(title: "OK", style: .default, handler: nil))
-//                present(ac, animated: true, completion: nil)
-//                return
-//            }
-//        }
         webView.load(URLRequest(url: url))
     }
 
@@ -92,5 +79,17 @@ class ViewController: UIViewController, WKNavigationDelegate {
         }
         decisionHandler(.cancel)
     }
+    
+    override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
+        if segue.identifier == "OpenWebsiteList" {
+            if let vc = segue.destination as? TableViewController {
+                vc.websiteList = websites
+                vc.delegate = self
+            }
+        }
+    }
 }
 
+protocol OpenWebsite: class {
+    func openWebsite(_ sender: UITableViewCell)
+}
