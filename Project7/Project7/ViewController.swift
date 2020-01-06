@@ -17,6 +17,10 @@ class ViewController: UITableViewController, UITextFieldDelegate {
     override func viewDidLoad() {
         super.viewDidLoad()
         
+        performSelector(inBackground: #selector(fetchJSON), with: nil)
+    }
+    
+    @objc func fetchJSON() {
         navigationItem.rightBarButtonItem = UIBarButtonItem(title: "Credits", style: .done, target: self, action: #selector(showCredits))
         
         navigationItem.leftBarButtonItem = UIBarButtonItem(title: "Filter", style: .done, target: self, action: #selector(openFilterAC))
@@ -29,15 +33,13 @@ class ViewController: UITableViewController, UITextFieldDelegate {
             urlString = "https://www.hackingwithswift.com/samples/petitions-2.json"
         }
 
-        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-            if let url = URL(string: urlString) {
-                if let data = try? Data(contentsOf: url) {
-                    self?.parse(json: data)
-                    return
-                }
+        if let url = URL(string: urlString) {
+            if let data = try? Data(contentsOf: url) {
+                self.parse(json: data)
+                return
             }
-            self?.showError()
         }
+        performSelector(onMainThread: #selector(showError), with: nil, waitUntilDone: false)
     }
     
     @objc func showCredits() {
@@ -73,13 +75,11 @@ class ViewController: UITableViewController, UITextFieldDelegate {
         tableView.reloadData()
     }
     
-    func showError() {
-        DispatchQueue.main.async { [weak self] in
-            let ac = UIAlertController(title: "Loading Error", message: "There was a problem loading the feed, please check your connection and try again.", preferredStyle: .alert)
-            
-            ac.addAction(UIAlertAction(title: "OK", style: .default, handler: nil))
-            self?.present(ac, animated: true)
-        }
+    @objc func showError() {
+        let ac = UIAlertController(title: "Loading Error", message: "There was a problem loading the feed, please check your connection and try again.", preferredStyle: .alert)
+        
+        ac.addAction(UIAlertAction(title: "OK", style: .default, handler: nil))
+        self.present(ac, animated: true)
     }
 
     func parse(json: Data) {
@@ -87,9 +87,9 @@ class ViewController: UITableViewController, UITextFieldDelegate {
         if let jsonPetitions = try? decoder.decode(Petitions.self, from: json) {
             petitions = jsonPetitions.results
             filteredPetitions = petitions
-            DispatchQueue.main.async { [weak self] in
-                self?.tableView.reloadData()
-            }
+            tableView.performSelector(onMainThread: #selector(tableView.reloadData), with: nil, waitUntilDone: false)
+        } else {
+            performSelector(onMainThread: #selector(showError), with: nil, waitUntilDone: false)
         }
     }
     
