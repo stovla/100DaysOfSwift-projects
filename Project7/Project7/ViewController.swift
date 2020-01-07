@@ -13,26 +13,25 @@ class ViewController: UITableViewController, UITextFieldDelegate {
     var petitions = [Petition]()
     var filterString = String()
     var filteredPetitions = [Petition]()
+    private var urlString = String()
 
     override func viewDidLoad() {
         super.viewDidLoad()
         
-        performSelector(inBackground: #selector(fetchJSON), with: nil)
-    }
-    
-    @objc func fetchJSON() {
         navigationItem.rightBarButtonItem = UIBarButtonItem(title: "Credits", style: .done, target: self, action: #selector(showCredits))
         
         navigationItem.leftBarButtonItem = UIBarButtonItem(title: "Filter", style: .done, target: self, action: #selector(openFilterAC))
-        
-        let urlString: String
         
         if navigationController?.tabBarItem.tag == 0 {
             urlString = "https://www.hackingwithswift.com/samples/petitions-1.json"
         } else {
             urlString = "https://www.hackingwithswift.com/samples/petitions-2.json"
         }
-
+        performSelector(inBackground: #selector(fetchJSON), with: nil)
+    }
+    
+    @objc func fetchJSON() {
+        
         if let url = URL(string: urlString) {
             if let data = try? Data(contentsOf: url) {
                 self.parse(json: data)
@@ -54,7 +53,7 @@ class ViewController: UITableViewController, UITextFieldDelegate {
             textField.delegate = self
         }
         ac.addAction(UIAlertAction(title: "OK", style: .default, handler: { [weak self] _ in
-            self?.filterList()
+            self?.performSelector(inBackground: #selector(self?.filterList), with: nil)
         }))
         present(ac, animated: true)
     }
@@ -63,7 +62,7 @@ class ViewController: UITableViewController, UITextFieldDelegate {
         filterString = textField.text!
     }
     
-    func filterList() {
+    @objc func filterList() {
         if filterString.isEmpty {
             filteredPetitions = petitions
         } else {
@@ -72,7 +71,7 @@ class ViewController: UITableViewController, UITextFieldDelegate {
                 $0.title.lowercased().range(of: filterString.lowercased()) != nil
             }
         }
-        tableView.reloadData()
+        tableView.performSelector(onMainThread: #selector(tableView.reloadData), with: nil, waitUntilDone: false)
     }
     
     @objc func showError() {
@@ -87,7 +86,11 @@ class ViewController: UITableViewController, UITextFieldDelegate {
         if let jsonPetitions = try? decoder.decode(Petitions.self, from: json) {
             petitions = jsonPetitions.results
             filteredPetitions = petitions
-            tableView.performSelector(onMainThread: #selector(tableView.reloadData), with: nil, waitUntilDone: false)
+            DispatchQueue.main.async { [weak self] in
+                self?.tableView.reloadData()
+            }
+            // even though it is called on the main thread, it showing a thread checker error
+//            tableView.performSelector(onMainThread: #selector(tableView.reloadData), with: nil, waitUntilDone: false)
         } else {
             performSelector(onMainThread: #selector(showError), with: nil, waitUntilDone: false)
         }
